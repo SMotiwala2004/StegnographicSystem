@@ -1,3 +1,5 @@
+from dotenv import load_dotenv
+load_dotenv()
 from flask import Flask
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager
@@ -5,6 +7,7 @@ from flask_cors import CORS
 from config.db import db
 from models.user import User
 from routes.auth_routes import auth_bp
+
 import os
 
 app = Flask(__name__)
