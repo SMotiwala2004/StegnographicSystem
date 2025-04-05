@@ -15,7 +15,7 @@ app = Flask(__name__)
 # Configuration
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
-    'DATABASE_URL', 'postgresql://your_user:your_password@localhost:5432/your_database')
+    'DATABASE_URL', 'postgresql://safeer@localhost/your_database')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
 
