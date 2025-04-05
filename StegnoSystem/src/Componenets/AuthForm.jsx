@@ -1,128 +1,269 @@
-// server.js
-const express = require('express');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const mongoose = require('mongoose');
-const cors = require('cors');
-require('dotenv').config();
+// AuthForm.jsx
+import React, { useState } from 'react';
+import axios from 'axios';
 
-const app = express();
-const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
+const AuthForm = () => {
+  const [isLogin, setIsLogin] = useState(true);
+  const [formData, setFormData] = useState({
+    username: '',
+    email: '',
+    password: ''
+  });
+  const [message, setMessage] = useState('');
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-// MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/auth_system', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(() => {
-  console.log('Connected to MongoDB');
-}).catch(err => {
-  console.error('MongoDB connection error:', err);
-});
-
-// User Model
-const userSchema = new mongoose.Schema({
-  username: { type: String, required: true, unique: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true }
-}, { timestamps: true });
-
-const User = mongoose.model('User', userSchema);
-
-// Routes
-app.post('/register', async (req, res) => {
-  try {
-    const { username, email, password } = req.body;
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: 'Email already registered' });
-    }
-
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Create new user
-    const newUser = new User({
-      username,
-      email,
-      password: hashedPassword
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
     });
+  };
 
-    await newUser.save();
-    res.status(201).json({ message: 'User registered successfully' });
-  } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ message: 'Server error during registration' });
-  }
-});
-
-app.post('/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    // Find user by email
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+      const payload = isLogin 
+        ? { email: formData.email, password: formData.password }
+        : formData;
+      
+      const response = await axios.post(endpoint, payload);
+      
+      setMessage(response.data.message || 'Success!');
+      
+      if (isLogin && response.data.access_token) {
+        localStorage.setItem('token', response.data.access_token);
+        setMessage('Login successful!');
+      }
+    } catch (error) {
+      setMessage(error.response?.data?.message || 'An error occurred');
     }
+  };
 
-    // Verify password
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
+  return (
+    <div className="auth-container">
+      <h2>{isLogin ? 'Login' : 'Register'}</h2>
+      <form onSubmit={handleSubmit}>
+        {!isLogin && (
+          <div className="form-group">
+            <label>Username</label>
+            <input
+              type="text"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+              required
+            />
+          </div>
+        )}
+        <div className="form-group">
+          <label>Email</label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+          />
+        </div>
+        <div className="form-group">
+          <label>Password</label>
+          <input
+            type="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            required
+          />
+        </div>
+        <button type="submit" className="auth-button">
+          {isLogin ? 'Login' : 'Register'}
+        </button>
+      </form>
+      
+      <p className="toggle-form" onClick={() => setIsLogin(!isLogin)}>
+        {isLogin ? 'Need an account? Register' : 'Already have an account? Login'}
+      </p>
+      
+      {message && <div className="message">{message}</div>}
+    </div>
+  );
+};
 
-    // Create JWT token
-    const payload = {
-      id: user._id,
-      username: user.username
+export default AuthForm;
+
+// Profile.jsx
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+
+const Profile = () => {
+  const [profile, setProfile] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          setError('Not authenticated. Please login.');
+          return;
+        }
+
+        const response = await axios.get('/api/auth/profile', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        
+        setProfile(response.data);
+      } catch (error) {
+        setError(error.response?.data?.message || 'Failed to fetch profile');
+      }
     };
 
-    const access_token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
-    res.json({ access_token });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error during login' });
-  }
-});
+    fetchProfile();
+  }, []);
 
-// Protected route example
-app.get('/profile', authenticateToken, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).select('-password');
-    res.json({ user });
-  } catch (error) {
-    console.error('Profile error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+  if (error) return <div className="error-message">{error}</div>;
+  if (!profile) return <div>Loading...</div>;
 
-// Authentication middleware
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  return (
+    <div className="profile-container">
+      <h2>Profile</h2>
+      <div>{profile.message}</div>
+      <button 
+        onClick={() => {
+          localStorage.removeItem('token');
+          window.location.reload();
+        }}
+        className="logout-button"
+      >
+        Logout
+      </button>
+    </div>
+  );
+};
 
-  if (!token) {
-    return res.status(401).json({ message: 'Access denied. No token provided.' });
-  }
+export default Profile;
 
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ message: 'Invalid token' });
-    }
-    req.user = decoded;
-    next();
-  });
+// App.jsx (corrected version)
+import React, { useState, useEffect } from 'react';
+import AuthForm from './components/AuthForm';
+import Profile from './components/Profile';
+import './App.css';
+
+function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    setIsAuthenticated(!!token);
+  }, []);
+
+  return (
+    <div className="App">
+      <header className="App-header">
+        <h1>Authentication App</h1>
+      </header>
+      <main>
+        {isAuthenticated ? <Profile /> : <AuthForm />}
+      </main>
+    </div>
+  );
 }
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+export default App;
+
+// App.css
+.App {
+  text-align: center;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.App-header {
+  margin-bottom: 30px;
+}
+
+.auth-container {
+  background-color: #f5f5f5;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+  margin-bottom: 15px;
+  text-align: left;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.auth-button {
+  width: 100%;
+  padding: 10px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  margin-top: 10px;
+}
+
+.auth-button:hover {
+  background-color: #45a049;
+}
+
+.toggle-form {
+  margin-top: 15px;
+  color: #2196F3;
+  cursor: pointer;
+}
+
+.message {
+  margin-top: 15px;
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.error-message {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 10px;
+  border-radius: 4px;
+  margin-top: 15px;
+}
+
+.profile-container {
+  background-color: #f5f5f5;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.logout-button {
+  margin-top: 20px;
+  padding: 10px 20px;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.logout-button:hover {
+  background-color: #d32f2f;
+}
