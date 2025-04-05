@@ -1,6 +1,6 @@
 import React from "react";
 import AuthForm from './componenets/AuthForm';
-import './Aopp.css';
+import './App.css';
 
 function App {
   return (
