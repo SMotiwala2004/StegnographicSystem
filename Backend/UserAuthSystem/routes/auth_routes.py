@@ -10,7 +10,7 @@ auth_bp = Blueprint('auth_bp', __name__)
 @auth_bp.route('/register', methods=['POST'])
 def register():
     data = request.json
-    if User.query.filter_by(email=data['email'].first()):
+    if User.query.filter_by(email=data['email']).first():
         return jsonify({"message": "Email already registered"}), 400
 
     hashed_password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
@@ -26,7 +26,7 @@ def login():
     data = request.json
     user = User.query.filter_by(email=data['email']).first()
 
-    if user and bcrypt.check_password_hash(user.password, data=['password']):
+    if user and bcrypt.check_password_hash(user.password, data['password']):
         access_token = create_access_token(identity={'id': user.id, 'username': user.username})
         return jsonify({"access_token": access_token}), 200
     
