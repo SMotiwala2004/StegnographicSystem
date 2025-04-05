@@ -40,7 +40,7 @@ const Login = () => {
       
       // Save token and redirect
       login(data.access_token);
-      navigate('/profile');
+      navigate('/stegnography');
       
     } catch (err) {
       setError(err.message);
