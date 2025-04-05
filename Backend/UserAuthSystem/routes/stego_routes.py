@@ -1,22 +1,13 @@
-from flask import Flask, request, jsonify, send_file, render_template
+from flask import Blueprint, request, jsonify, send_file, current_app
 import os
 from stegano import lsb
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from Crypto.Random import get_random_bytes
 import base64
-import io
 from PIL import Image
 
-app = Flask(__name__)
-
-# Ensure upload folder exists
-UPLOAD_FOLDER = 'uploads'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-@app.route('/')
-def index():
-    return render_template('index.html')
+stego_bp = Blueprint('stego', __name__)
 
 def encrypt_password(password, key):
     """Encrypt a password using AES."""
@@ -65,7 +56,7 @@ def decrypt_password(encrypted_data, key):
     
     return decrypted_data.decode('utf-8')
 
-@app.route('/encode', methods=['POST'])
+@stego_bp.route('/encode', methods=['POST'])
 def encode_password():
     # Check if the post request has the file part
     if 'image' not in request.files:
@@ -83,15 +74,23 @@ def encode_password():
         # First encrypt the password
         encrypted_password = encrypt_password(password, key)
         
+        # Get upload folder from app config
+        upload_folder = 'uploads'  # Hardcoded as fallback
+        if 'UPLOAD_FOLDER' in current_app.config:
+            upload_folder = current_app.config['UPLOAD_FOLDER']
+        
+        # Ensure the folder exists
+        os.makedirs(upload_folder, exist_ok=True)
+        
         # Save the uploaded image temporarily
-        temp_path = os.path.join(UPLOAD_FOLDER, 'temp_image.png')
+        temp_path = os.path.join(upload_folder, 'temp_image.png')
         image_file.save(temp_path)
         
         # Embed the encrypted password into the image
         secret_image = lsb.hide(temp_path, encrypted_password)
         
         # Save the image with the hidden password
-        output_path = os.path.join(UPLOAD_FOLDER, 'encoded_image.png')
+        output_path = os.path.join(upload_folder, 'encoded_image.png')
         secret_image.save(output_path)
         
         # Return the image with the hidden password
@@ -101,7 +100,7 @@ def encode_password():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/decode', methods=['POST'])
+@stego_bp.route('/decode', methods=['POST'])
 def decode_password():
     # Check if the post request has the file part
     if 'image' not in request.files:
@@ -115,8 +114,16 @@ def decode_password():
         return jsonify({'error': 'Key is required'}), 400
     
     try:
+        # Get upload folder from app config
+        upload_folder = 'uploads'  # Hardcoded as fallback
+        if 'UPLOAD_FOLDER' in current_app.config:
+            upload_folder = current_app.config['UPLOAD_FOLDER']
+        
+        # Ensure the folder exists
+        os.makedirs(upload_folder, exist_ok=True)
+        
         # Save the uploaded image temporarily
-        temp_path = os.path.join(UPLOAD_FOLDER, 'temp_decode.png')
+        temp_path = os.path.join(upload_folder, 'temp_decode.png')
         image_file.save(temp_path)
         
         # Extract the hidden message from the image
@@ -129,6 +136,3 @@ def decode_password():
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(debug=True)
