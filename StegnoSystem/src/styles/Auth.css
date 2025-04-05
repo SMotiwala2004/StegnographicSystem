@@ -51,7 +51,7 @@
   
   .auth-button {
     width: 100%;
-    background-color: #3498db;
+    background-color: rgb(39, 84, 138);
     color: white;
     border: none;
     padding: 12px;
@@ -63,7 +63,7 @@
   }
   
   .auth-button:hover {
-    background-color: #2980b9;
+    background-color: #60B5FF;
   }
   
   .auth-button:disabled {

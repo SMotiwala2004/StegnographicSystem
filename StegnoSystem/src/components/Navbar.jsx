@@ -16,7 +16,7 @@ const Navbar = () => {
   return (
     <nav className="navbar">
       <div className="navbar-brand">
-        <Link to="/">Auth App</Link>
+        <Link to="/">StegnoSys</Link>
       </div>
       
       <ul className="navbar-nav">
@@ -24,6 +24,9 @@ const Navbar = () => {
           <>
             <li className="nav-item">
               <Link to="/profile">Profile</Link>
+            </li>
+            <li className="nav-item">
+              <Link to="/steganography">Steganography</Link>
             </li>
             <li className="nav-item">
               <button className="nav-link logout-link" onClick={handleLogout}>

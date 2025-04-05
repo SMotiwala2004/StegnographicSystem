@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './components/Login';
 import Register from './components/Register';
 import Profile from './components/Profile';
+import Steganography from './components/Steganography';
 import Navbar from './components/Navbar';
 import { AuthProvider } from './context/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
@@ -22,6 +23,11 @@ function App() {
               <Route path="/profile" element={
                 <PrivateRoute>
                   <Profile />
+                </PrivateRoute>
+              } />
+              <Route path="/steganography" element={
+                <PrivateRoute>
+                  <Steganography />
                 </PrivateRoute>
               } />
               <Route path="/" element={<Navigate to="/login" />} />
